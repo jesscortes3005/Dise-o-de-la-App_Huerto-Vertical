@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo: Verde Vertical Inteligente (iPhone Detallado)</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+    <style>
+        :root {
+            --primary-color: #2c6b2f; 
+            --secondary-color: #4CAF50;
+            --background-color: #f0f4f0;
+            --text-color: #333333;
+            --card-bg-color: #ffffff;
+            --alert-warning-bg: #fff3cd;
+            --alert-warning-text: #856404;
+            --alert-info-bg: #d1ecf1;
+            --alert-info-text: #0c5460;
+        }
+
+        body {
+            background-color: #e9e9e9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* --- PANTALLA DE INICIO (SPLASH SCREEN) --- */
+        .splash-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--primary-color);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; color: white;
+            transition: opacity 0.8s ease-out, visibility 0.8s;
+            visibility: visible; opacity: 1; border-radius: 52px; 
+        }
+        .splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-screen .logo { font-size: 100px; animation: fadeInScaleUp 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .splash-screen h1 { font-size: 2.5em; font-weight: 700; margin-top: 20px; opacity: 0; animation: fadeInScaleUp 1.5s 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes fadeInScaleUp { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        .mobile-frame {
+            width: 393px; height: 852px; background-color: #2A2A2D;
+            border: 8px solid #1c1c1e; border-radius: 60px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 0 0 2px #444;
+            box-sizing: border-box; flex-shrink: 0; position: relative;
+        }
+
+        .screen {
+            background-color: var(--background-color); height: 100%; width: 100%;
+            border-radius: 52px; display: flex; flex-direction: column;
+            overflow: hidden; position: relative;
+        }
+        
+        .status-bar {
+            position: absolute; top: 0; left: 0; right: 0; height: 54px; 
+            padding: 0 28px; display: flex; justify-content: space-between; align-items: center;
+            z-index: 10; color: white; pointer-events: none; 
+        }
+        .status-bar-left .time { font-weight: 600; font-size: 0.95em; }
+        .status-bar-right { display: flex; align-items: center; gap: 6px; }
+        .status-bar-right .material-symbols-outlined { font-size: 1.2em; }
+        .battery-level { font-size: 0.9em; font-weight: 500; margin-left: 2px; }
+        .dynamic-island { width: 125px; height: 36px; background-color: #000; border-radius: 25px; position: absolute; left: 50%; transform: translateX(-50%); top: 10px; }
+        
+        .app-header {
+            background-color: var(--primary-color); color: white;
+            padding: 65px 20px 20px 20px; text-align: center;
+            flex-shrink: 0; position: relative;
+        }
+        .app-header h1 { margin: 0; font-size: 1.1em; font-weight: 600; }
+        .content { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .page { display: none; }
+        .page.active { 
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        .card { 
+            background-color: var(--card-bg-color); 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .dashboard-header { 
+            font-size: 1.5em; 
+            font-weight: 700; 
+            color: var(--text-color); 
+            margin-bottom: 20px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .status-item { background-color: #f9f9f9; border-radius: 10px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 120px; }
+        .status-item .icon { font-size: 2.5em; color: var(--primary-color); }
+        .status-item .label { font-size: 0.9em; color: #666; margin-top: 8px; }
+        .status-item .value { font-size: 1.2em; font-weight: 500; color: var(--text-color); margin-top: 5px; }
+        
+        .hidden { display: none !important; }
+
+        .alert-card {
+            display: flex; align-items: center; gap: 15px;
+            padding: 15px; border-radius: 12px; margin-bottom: 20px;
+            font-size: 0.9em;
+            animation: fadeIn 0.5s;
+        }
+        .alert-card.warning { background-color: var(--alert-warning-bg); color: var(--alert-warning-text); }
+        .alert-card.info { background-color: var(--alert-info-bg); color: var(--alert-info-text); }
+        .alert-card .icon { font-size: 1.8em; }
+
+
+        .action-button { display: block; width: 100%; background-color: var(--secondary-color); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 1em; font-weight: 500; cursor: pointer; text-align: center; margin-top: 10px; transition: background-color 0.3s, opacity 0.3s; text-decoration: none;}
+        .action-button:hover { background-color: #3e8e41; }
+        .action-button:disabled { background-color: #9e9e9e; cursor: not-allowed; opacity: 0.7; }
+        
+        .community-post { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .community-post:last-child { border-bottom: 0; }
+        .post-author { font-weight: bold; color: var(--primary-color); }
+        .post-content { color: #555; margin-top: 5px; }
+        
+        .app-footer { display: flex; justify-content: space-around; align-items: center; padding: 12px 0; border-top: 1px solid #ddd; background-color: #fafafa; flex-shrink: 0; }
+        .footer-icon { display: flex; flex-direction: column; align-items: center; color: #999; cursor: pointer; }
+        .footer-icon.active { color: var(--primary-color); }
+        .footer-icon .material-symbols-outlined { font-size: 26px; }
+        .footer-icon .label { font-size: 10px; margin-top: 4px; }
+
+        /* --- CENTRO DE NOTIFICACIONES Y CONTROL --- */
+        .overlay-panel {
+            position: absolute; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            z-index: 50; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s; color: white;
+            pointer-events: none;
+        }
+        .overlay-panel.active { opacity: 1; visibility: visible; pointer-events: all; }
+
+        #notification-center { top: 0; padding: 50px 15px 15px; box-sizing: border-box; }
+        #notification-list { display: flex; flex-direction: column; gap: 10px; }
+        
+        .notification-item {
+            background-color: rgba(60, 60, 60, 0.75);
+            border-radius: 15px;
+            padding: 12px;
+            animation: fadeInUp 0.5s ease-out;
+            display: flex;
+            flex-direction: column;
+            gap: 4px; /* Space between header and body */
+        }
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        .app-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        .app-info .app-icon { font-size: 1.2em; color: var(--secondary-color); }
+        .notification-content { text-align: left; }
+        .notification-content strong { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 2px; }
+        .notification-content span { font-size: 0.85em; opacity: 0.9; }
+
+        .notification-banner {
+            position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 20px); max-width: 370px; z-index: 90;
+            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .notification-banner.show { top: 60px; }
+        .notification-banner .notification-item { width: 100%; }
+
+        #control-center { display: flex; justify-content: flex-start; align-items: flex-start; padding: 50px 15px 15px; box-sizing: border-box; }
+        .control-center-layout {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(78px, auto);
+            gap: 15px;
+            width: 100%;
+        }
+        .control-module { background-color: rgba(45, 45, 45, 0.7); border-radius: 18px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; pointer-events: all; }
+        
+        .connectivity-module { grid-area: 1 / 1 / 3 / 3; display: flex; flex-wrap: wrap; padding: 10px; justify-content: space-around; align-content: space-around;}
+        .connectivity-module .control-icon { width: 48px; height: 48px; }
+        
+        .music-module { grid-area: 1 / 3 / 3 / 5; padding: 15px; flex-direction: column; align-items: flex-start; justify-content: space-between;}
+        .rotation-lock-module { grid-area: 3 / 1 / 4 / 2; }
+        .screen-mirror-module { grid-area: 3 / 2 / 4 / 3; }
+        .brightness-slider-module { grid-area: 3 / 3 / 5 / 4; padding: 10px; }
+        .volume-slider-module { grid-area: 3 / 4 / 5 / 5; padding: 10px; }
+        .focus-module { grid-area: 4 / 1 / 5 / 3; justify-content: flex-start; padding: 0 15px; cursor: pointer; }
+        .flashlight-module, .timer-module, .calculator-module, .camera-module, .qr-scanner-module { grid-row: span 1; }
+
+        .control-icon { width: 100%; height: 100%; border-radius: 50%; background-color: rgba(80, 80, 80, 0.7); display: flex; justify-content: center; align-items: center; color: #fff; font-size: 28px; cursor: pointer; transition: background-color 0.2s; }
+        .control-module > .control-icon { width: 56px; height: 56px; }
+        .control-icon.active { background-color: #fff; color: #000; }
+        .control-icon.blue.active { background-color: #0A84FF; color: #fff;}
+        .focus-module.active { background-color: rgba(80, 80, 80, 0.9); }
+
+        .music-module-content { text-align: left; width: 100%;}
+        .music-module-content h4 { margin: 10px 0 5px; font-weight: 500; font-size: 1em;}
+        .music-module-content p { margin: 0; font-size: 0.9em; opacity: 0.7;}
+        .music-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; font-size: 28px; width: 100%;}
+
+        .slider-module { position: relative; }
+        .slider-module .icon { position: absolute; bottom: 12px; font-size: 20px;}
+        input[type="range"].vertical { -webkit-appearance: none; appearance: none; width: 140px; height: 60px; background: rgba(0,0,0,0.3); border-radius: 30px; outline: none; position: absolute; transform: rotate(-90deg); }
+        input[type="range"].vertical::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 54px; height: 54px; background: #fff; cursor: pointer; border-radius: 50%; border: 3px solid rgba(0,0,0,0.3); }
+        
+        .focus-module .icon-text-wrapper { display: flex; align-items: center; gap: 10px; }
+        .focus-module .material-symbols-outlined { font-size: 24px; }
+        .focus-module span { font-size: 1em; font-weight: 500; }
+
+        .ios-handle-triggers { position: absolute; top: 0; left: 0; width: 100%; height: 54px; z-index: 60; display: flex; pointer-events: all; }
+        #notification-trigger, #control-center-trigger { flex: 1; }
+        
+        /* FORMULARIO DE REGISTRO */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.9em; color: #555;}
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            color: #333;
+        }
+        
+        @keyframes button-success { 
+            50% { background-color: #2ecc71; }
+        }
+        .button-success-animation { animation: button-success 1s ease; }
+        
+        /* HUERTO DISPLAY */
+        .garden-display-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .garden-display-header .dashboard-header {
+            margin-bottom: 0;
+            flex-grow: 1;
+        }
+        .nav-arrow {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .nav-arrow:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="mobile-frame">
+        <div class="screen">
+            <div class="splash-screen"><span class="material-symbols-outlined logo">potted_plant</span><h1>Huerto Vertical</h1></div>
+            
+            <!-- OVERLAYS -->
+            <div id="notification-center" class="overlay-panel"><div id="notification-list"></div></div>
+            <div id="control-center" class="overlay-panel">
+                <div class="control-center-layout">
+                    <!-- ... contenido del centro de control ... -->
+                </div>
+            </div>
+            <div id="notification-banner" class="notification-banner"></div>
+            <div class="ios-handle-triggers"><div id="notification-trigger"></div><div id="control-center-trigger"></div></div>
+            <div class="status-bar">
+                <div class="status-bar-left"><span class="time" id="current-time">9:41</span></div>
+                <div class="dynamic-island"></div>
+                <div class="status-bar-right"><span class="material-symbols-outlined">signal_cellular_alt</span><span class="material-symbols-outlined">wifi</span><span class="material-symbols-outlined">battery_full</span><span class="battery-level">95%</span></div>
+            </div>
+            <header class="app-header"><h1 id="app-title">Huerto Vertical Inteligente</h1></header>
+            <main class="content">
+                <!-- PÁGINA 1: MI HUERTO -->
+                <div id="page-huerto" class="page active">
+                    
+                    <div id="garden-display" class="hidden">
+                         <div class="garden-display-header">
+                            <button id="arrow-left" class="nav-arrow"><span class="material-symbols-outlined">arrow_back_ios</span></button>
+                            <div class="dashboard-header" id="huerto-main-title"></div>
+                            <button id="arrow-right" class="nav-arrow"><span class="material-symbols-outlined">arrow_forward_ios</span></button>
+                        </div>
+                        <div id="alert-container">
+                            <div id="dry-soil-alert" class="alert-card warning hidden">
+                                 <span class="icon material-symbols-outlined">dry</span>
+                                 <div>
+                                    <strong>¡Tierra seca detectada!</strong><br>
+                                    El riego automático se activará si es necesario.
+                                 </div>
+                            </div>
+                            <div id="water-deposit-alert" class="alert-card warning hidden">
+                                <span class="icon material-symbols-outlined">notification_important</span>
+                                <div>
+                                    <strong>¡Depósito de agua bajo!</strong><br>
+                                    Por favor, rellena el depósito para el riego.
+                                </div>
+                            </div>
+                             <div id="temp-alert" class="alert-card info hidden">
+                                 <span class="icon material-symbols-outlined">ac_unit</span>
+                                 <div>
+                                    <strong>Temperatura baja</strong><br>
+                                    Considera proteger tus plantas del frío.
+                                 </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="status-grid">
+                                <div class="status-item"><span class="icon material-symbols-outlined">humidity_percentage</span><span class="value" id="humidity-value">--</span><div class="label">Humedad Tierra</div></div>
+                                <div class="status-item"><span class="icon material-symbols-outlined">thermostat</span><span class="value" id="temperature-value">--</span><div class="label">Temperatura</div></div>
+                                <div class="status-item"><span class="icon material-symbols-outlined">opacity</span><span class="value" id="water-value">--</span><div class="label">Nivel de Agua</div></div>
+                                <div class="status-item"><span class="icon material-symbols-outlined">light_mode</span><div class="value">Óptima</div><div class="label">Luz Solar</div></div>
+                            </div>
+                            <button id="irrigation-button" class="action-button">Activar Riego Manual</button>
+                        </div>
+                    </div>
+
+                    <div id="no-garden-message" class="card">
+                        <p style="text-align: center;">No tienes huertos registrados. ¡Registra uno para empezar!</p>
+                    </div>
+
+                    <div class="card">
+                         <div class="dashboard-header" style="font-size: 1.2em; margin-bottom: 10px;">Comunidad</div>
+                         <div class="community-post"><div class="post-author">Carlos M.</div><div class="post-content">¡Mi primera cosecha de lechugas! Gracias a los consejos del taller.</div></div>
+                         <div class="community-post"><div class="post-author">Laura F.</div><div class="post-content">¿Alguien tiene un tip para controlar la plaga de pulgón de forma orgánica?</div></div>
+                         <a href="#" class="action-button" style="background-color: #f1f1f1; color: var(--text-color);">Ver más en la comunidad</a>
+                    </div>
+                     <div class="card">
+                        <button id="register-garden-btn" class="action-button">Registrar Nuevo Huerto</button>
+                    </div>
+                </div>
+                
+                <!-- PÁGINA "REGISTRAR HUERTO" -->
+                <div id="page-register-huerto" class="page">
+                     <div class="card">
+                        <div class="dashboard-header">Registrar Huerto</div>
+                        <form id="add-garden-form">
+                            <div class="form-group">
+                                <label for="garden-name">Nombre del Huerto</label>
+                                <input type="text" id="garden-name" required placeholder="Ej: Tomates Cherry">
+                            </div>
+                             <div class="form-group">
+                                <label for="plant-type">Tipo de Planta (Valores Recomendados)</label>
+                                <select id="plant-type">
+                                    <option value="custom">Personalizado</option>
+                                    <option value="lechugas">Lechugas</option>
+                                    <option value="tomates">Tomates</option>
+                                    <option value="hierbas">Hierbas Aromáticas</option>
+                                </select>
+                            </div>
+                             <div class="form-group">
+                                <label for="initial-humidity">Humedad Ideal (%)</label>
+                                <input type="number" id="initial-humidity" required value="65" min="0" max="100">
+                            </div>
+                             <div class="form-group">
+                                <label for="initial-temp">Temperatura Ideal (°C)</label>
+                                <input type="number" id="initial-temp" required value="22" min="0" max="40">
+                            </div>
+                             <div class="form-group">
+                                <label for="initial-water">Nivel de Agua Inicial (%)</label>
+                                <input type="number" id="initial-water" required value="85" min="0" max="100">
+                            </div>
+                            <button type="submit" class="action-button">Aceptar</button>
+                            <button type="button" id="cancel-add-garden" class="action-button" style="background-color: #555; margin-top: 15px;">Cancelar</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- OTRAS PÁGINAS DEL FOOTER -->
+                <div id="page-aprender" class="page">
+                    <div class="dashboard-header">Centro de Aprendizaje</div>
+                    <div class="card"><h3>Guía: Tomates Cherry Perfectos</h3><p>Aprende paso a paso cómo cultivar tus propios tomates jugosos en el balcón, desde la siembra hasta la cosecha.</p><a href="#" class="action-button" style="background-color: #f1f1f1; color: var(--text-color);">Leer Guía Completa</a></div>
+                    <div class="card"><h3>Taller Online: Control de Plagas Orgánico</h3><p>Inscríbete en nuestro próximo taller en vivo y descubre métodos naturales para mantener tus plantas sanas y libres de plagas.</p><a href="#" class="action-button">Inscribirse Ahora</a></div>
+                </div>
+                <div id="page-comunidad" class="page">
+                    <div class="dashboard-header">Foro de la Comunidad</div>
+                    <div class="card">
+                        <div class="community-post"><div class="post-author">Laura F.</div><div class="post-content">¿Alguien tiene un tip para controlar la plaga de pulgón de forma orgánica? ¡Ayuda!</div></div>
+                        <div class="community-post"><div class="post-author">Carlos M.</div><div class="post-content">¡Mi primera cosecha de lechugas! Gracias a los consejos del taller. ¡Miren! [Imagen de lechugas]</div></div>
+                        <div class="community-post"><div class="post-author">Ana G.</div><div class="post-content">Comparto foto de mis pimientos. ¡Están creciendo muy rápido! #HuertoUrbano</div></div>
+                        <button class="action-button" style="margin-top: 20px;">Crear Nueva Publicación</button>
+                    </div>
+                </div>
+                <div id="page-perfil" class="page">
+                    <div class="dashboard-header">Mi Perfil</div>
+                    <div class="card" style="text-align: center;">
+                        <span class="material-symbols-outlined" style="font-size: 80px; color: var(--primary-color);">account_circle</span>
+                        <h2 style="margin: 10px 0 5px 0;">Elena J.</h2><p style="margin: 0; color: #666;">Miembro desde: Octubre 2025</p>
+                        <button class="action-button" style="background-color: #f1f1f1; color: var(--text-color); margin-top: 20px;">Editar Perfil</button>
+                        <button class="action-button" style="background-color: #e74c3c; margin-top: 15px;">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </main>
+            <footer class="app-footer">
+                <div class="footer-icon active" data-page="page-huerto"><span class="material-symbols-outlined">potted_plant</span><span class="label">Mi Huerto</span></div>
+                <div class="footer-icon" data-page="page-aprender"><span class="material-symbols-outlined">school</span><span class="label">Aprender</span></div>
+                <div class="footer-icon" data-page="page-comunidad"><span class="material-symbols-outlined">groups</span><span class="label">Comunidad</span></div>
+                <div class="footer-icon" data-page="page-perfil"><span class="material-symbols-outlined">account_circle</span><span class="label">Perfil</span></div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- INICIALIZACIÓN BÁSICA ---
+            const splash = document.querySelector('.splash-screen');
+            setTimeout(() => { splash.classList.add('hidden'); }, 2500);
+
+            function updateTime() {
+                const timeElement = document.getElementById('current-time');
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                timeElement.textContent = `${hours}:${minutes}`;
+            }
+            updateTime();
+            setInterval(updateTime, 60000);
+
+            // --- ESTADO GLOBAL ---
+            let gardens = [];
+            let activeGardenIndex = -1;
+            let simulationIntervalId = null;
+            
+            const PLANT_PRESETS = {
+                lechugas: { humidity: 65, temp: 18, water: 85 },
+                tomates: { humidity: 70, temp: 24, water: 90 },
+                hierbas: { humidity: 55, temp: 20, water: 80 },
+                custom: { humidity: 65, temp: 22, water: 85}
+            };
+
+            const elements = {
+                appTitle: document.getElementById('app-title'),
+                footerIcons: document.querySelectorAll('.footer-icon'),
+                pages: document.querySelectorAll('.page'),
+                notificationCenter: document.getElementById('notification-center'),
+                controlCenter: document.getElementById('control-center'),
+                notificationTrigger: document.getElementById('notification-trigger'),
+                controlCenterTrigger: document.getElementById('control-center-trigger'),
+                notificationList: document.getElementById('notification-list'),
+                notificationBanner: document.getElementById('notification-banner'),
+                controlToggles: document.querySelectorAll('[data-toggle]'),
+                // Register page
+                registerGardenBtn: document.getElementById('register-garden-btn'),
+                addGardenForm: document.getElementById('add-garden-form'),
+                cancelAddGardenBtn: document.getElementById('cancel-add-garden'),
+                plantTypeSelect: document.getElementById('plant-type'),
+                // Garden Display
+                gardenDisplay: document.getElementById('garden-display'),
+                noGardenMessage: document.getElementById('no-garden-message'),
+                arrowLeft: document.getElementById('arrow-left'),
+                arrowRight: document.getElementById('arrow-right'),
+                huertoMainTitle: document.getElementById('huerto-main-title'),
+                humidityValue: document.getElementById('humidity-value'),
+                temperatureValue: document.getElementById('temperature-value'),
+                waterValue: document.getElementById('water-value'),
+                irrigationButton: document.getElementById('irrigation-button'),
+                alertContainer: document.getElementById('alert-container'),
+                drySoilAlert: document.getElementById('dry-soil-alert'),
+                waterDepositAlert: document.getElementById('water-deposit-alert'),
+                tempAlert: document.getElementById('temp-alert'),
+            };
+
+            const pageTitles = { 'page-huerto': 'Huerto Vertical Inteligente', 'page-aprender': 'Centro de Aprendizaje', 'page-comunidad': 'Comunidad', 'page-perfil': 'Mi Perfil','page-register-huerto': 'Registrar Huerto'};
+
+            function navigateTo(pageId) {
+                elements.pages.forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                elements.appTitle.textContent = pageTitles[pageId] || 'Huerto Vertical';
+                
+                const isMainPage = ['page-huerto', 'page-aprender', 'page-comunidad', 'page-perfil'].includes(pageId);
+                if(isMainPage){
+                    elements.footerIcons.forEach(i => i.classList.toggle('active', i.dataset.page === pageId));
+                } else {
+                    elements.footerIcons.forEach(i => i.classList.remove('active'));
+                }
+            }
+            
+            // --- Lógica de Notificaciones ---
+            function showBannerNotification(gardenName, title, message) { 
+                const banner = elements.notificationBanner;
+                if (!banner) return;
+                
+                if (banner.dataset.timeoutId) {
+                    clearTimeout(parseInt(banner.dataset.timeoutId));
+                }
+                const bannerContent = `
+                    <div class="notification-item">
+                        <div class="notification-header">
+                            <div class="app-info">
+                                <span class="app-icon material-symbols-outlined">potted_plant</span>
+                                <span class="app-name">${gardenName}</span>
+                            </div>
+                            <span class="timestamp">Ahora</span>
+                        </div>
+                        <div class="notification-content">
+                            <strong>${title}</strong>
+                            <span>${message}</span>
+                        </div>
+                    </div>`;
+                banner.innerHTML = bannerContent;
+                banner.classList.add('show');
+                const timeoutId = setTimeout(() => { banner.classList.remove('show'); }, 4000);
+                banner.dataset.timeoutId = timeoutId;
+             }
+            function addNotification(garden, id, title, message) { 
+                const uniqueId = `${id}-${garden.id}`;
+                const existingNotification = document.getElementById(uniqueId);
+                if (existingNotification) {
+                    existingNotification.querySelector('strong').textContent = title;
+                    existingNotification.querySelector('span').textContent = message;
+                    return;
+                }
+                
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timestamp = `${hours}:${minutes}`;
+
+                const notificationHTML = `
+                    <div class="notification-item" id="${uniqueId}">
+                        <div class="notification-header">
+                            <div class="app-info">
+                                <span class="app-icon material-symbols-outlined">potted_plant</span>
+                                <span class="app-name">${garden.name}</span>
+                            </div>
+                            <span class="timestamp">${timestamp}</span>
+                        </div>
+                        <div class="notification-content">
+                            <strong>${title}</strong>
+                            <span>${message}</span>
+                        </div>
+                    </div>`;
+                elements.notificationList.insertAdjacentHTML('afterbegin', notificationHTML);
+             }
+            function removeNotification(garden, id) { 
+                const uniqueId = `${id}-${garden.id}`;
+                const notification = document.getElementById(uniqueId);
+                 if (notification) notification.remove();
+             }
+            
+            function triggerWatering(garden) {
+                if (garden.isWatering || garden.sensorValues.water <= 0) return;
+
+                garden.isWatering = true;
+                const wateringId = `watering-${garden.id}`;
+
+                removeNotification(garden, 'dry-soil-alert');
+                showBannerNotification(garden.name, 'Riego Activado', 'Regando tus plantas ahora.');
+                addNotification(garden, wateringId, 'Regando...', 'El sistema está regando tus plantas.');
+                
+                elements.irrigationButton.textContent = 'Regando...';
+                elements.irrigationButton.disabled = true;
+
+                setTimeout(() => {
+                    garden.sensorValues.humidity = garden.thresholds.humidity_optimal;
+                    garden.sensorValues.water = Math.max(0, garden.sensorValues.water - 15);
+                    
+                    addNotification(garden, wateringId, '¡Riego finalizado!', 'Niveles de humedad restablecidos.');
+                    
+                    elements.irrigationButton.textContent = 'Activar Riego Manual';
+                    elements.irrigationButton.disabled = false;
+                    garden.isWatering = false;
+                }, 3000);
+            }
+            
+            function simulationLoop() {
+                 gardens.forEach(garden => {
+                    if (!garden.isWatering) {
+                        garden.sensorValues.humidity -= 0.5;
+                        garden.sensorValues.water -= 0.1;
+                    }
+                    garden.sensorValues.temperature += (Math.random() - 0.5) * 0.5;
+
+                    if (garden.sensorValues.humidity < 0) garden.sensorValues.humidity = 0;
+                    if (garden.sensorValues.water < 0) garden.sensorValues.water = 0;
+                    
+                    checkSystemStatus(garden);
+                });
+                renderActiveGardenDisplay();
+            }
+
+            function renderActiveGardenDisplay() {
+                if (activeGardenIndex === -1) {
+                    elements.gardenDisplay.classList.add('hidden');
+                    elements.noGardenMessage.classList.remove('hidden');
+                    return;
+                }
+                elements.gardenDisplay.classList.remove('hidden');
+                elements.noGardenMessage.classList.add('hidden');
+
+                const garden = gardens[activeGardenIndex];
+                elements.huertoMainTitle.textContent = garden.name;
+                elements.humidityValue.textContent = `${garden.sensorValues.humidity.toFixed(0)}%`;
+                elements.temperatureValue.textContent = `${garden.sensorValues.temperature.toFixed(1)}°C`;
+                elements.waterValue.textContent = `${garden.sensorValues.water.toFixed(0)}%`;
+                
+                updateCarouselArrows();
+            }
+
+            function checkSystemStatus(garden) {
+                if (gardens[activeGardenIndex] && garden.id === gardens[activeGardenIndex].id) {
+                    elements.drySoilAlert.classList.toggle('hidden', garden.sensorValues.humidity >= garden.thresholds.humidity_low);
+                    elements.waterDepositAlert.classList.toggle('hidden', garden.sensorValues.water >= garden.thresholds.water_low);
+                    elements.tempAlert.classList.toggle('hidden', garden.sensorValues.temperature >= garden.thresholds.temp_low);
+                }
+                
+                if (garden.sensorValues.humidity < garden.thresholds.humidity_low) {
+                    addNotification(garden, 'dry-soil-alert', 'Tierra Seca Detectada', 'El riego automático se activará pronto.');
+                    if (garden.sensorValues.water > garden.thresholds.water_low && !garden.isWatering) {
+                        triggerWatering(garden);
+                    }
+                } else {
+                     removeNotification(garden, 'dry-soil-alert');
+                }
+                if (garden.sensorValues.water < garden.thresholds.water_low) {
+                    addNotification(garden, 'water-deposit-alert', 'Depósito de Agua Bajo', 'Por favor, rellena el depósito.');
+                } else {
+                    removeNotification(garden, 'water-deposit-alert');
+                }
+                if (garden.sensorValues.temperature < garden.thresholds.temp_low) {
+                    addNotification(garden, 'temp-alert', 'Temperatura Baja', 'Considera proteger tus plantas del frío.');
+                } else {
+                    removeNotification(garden, 'temp-alert');
+                }
+            }
+            
+            function updateCarouselArrows() {
+                elements.arrowLeft.disabled = activeGardenIndex <= 0;
+                elements.arrowRight.disabled = activeGardenIndex >= gardens.length - 1;
+            }
+
+            // --- EVENT LISTENERS ---
+            elements.registerGardenBtn.addEventListener('click', () => {
+                elements.addGardenForm.reset();
+                elements.plantTypeSelect.dispatchEvent(new Event('change'));
+                navigateTo('page-register-huerto');
+            });
+            elements.cancelAddGardenBtn.addEventListener('click', () => navigateTo('page-huerto'));
+
+            elements.plantTypeSelect.addEventListener('change', (e) => {
+                const preset = PLANT_PRESETS[e.target.value];
+                if(preset) {
+                    document.getElementById('initial-humidity').value = preset.humidity;
+                    document.getElementById('initial-temp').value = preset.temp;
+                    document.getElementById('initial-water').value = preset.water;
+                }
+            });
+
+            elements.addGardenForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newGarden = {
+                    id: Date.now(),
+                    name: document.getElementById('garden-name').value,
+                    sensorValues: {
+                        humidity: parseFloat(document.getElementById('initial-humidity').value),
+                        temperature: parseFloat(document.getElementById('initial-temp').value),
+                        water: parseFloat(document.getElementById('initial-water').value)
+                    },
+                    thresholds: { water_low: 20, temp_low: 15, humidity_low: 40, humidity_optimal: 70 },
+                    isWatering: false
+                };
+                gardens.push(newGarden);
+                
+                if (simulationIntervalId === null) {
+                    simulationIntervalId = setInterval(simulationLoop, 2000);
+                }
+                
+                activeGardenIndex = gardens.length - 1;
+                renderActiveGardenDisplay();
+                navigateTo('page-huerto');
+                showBannerNotification(newGarden.name, "Huerto Registrado", `¡${newGarden.name} listo para monitorear!`);
+            });
+
+            elements.arrowLeft.addEventListener('click', () => {
+                if(activeGardenIndex > 0) {
+                    activeGardenIndex--;
+                    renderActiveGardenDisplay();
+                }
+            });
+            elements.arrowRight.addEventListener('click', () => {
+                if(activeGardenIndex < gardens.length - 1) {
+                    activeGardenIndex++;
+                    renderActiveGardenDisplay();
+                }
+            });
+
+            elements.irrigationButton.addEventListener('click', () => {
+                if (activeGardenIndex !== -1) {
+                    const activeGarden = gardens[activeGardenIndex];
+                    if (activeGarden.sensorValues.water > activeGarden.thresholds.water_low) {
+                        triggerWatering(activeGarden);
+                    } else {
+                        addNotification(activeGarden, 'water-deposit-alert', 'Depósito de Agua Bajo', 'Por favor, rellena el depósito.');
+                    }
+                }
+            });
+            
+            elements.footerIcons.forEach(icon => {
+                icon.addEventListener('click', () => navigateTo(icon.dataset.page));
+            });
+            
+            elements.notificationTrigger.addEventListener('click', () => elements.notificationCenter.classList.toggle('active'));
+            elements.controlCenterTrigger.addEventListener('click', () => elements.controlCenter.classList.toggle('active'));
+            elements.notificationCenter.addEventListener('click', (e) => { if(e.target === elements.notificationCenter) e.target.classList.remove('active');});
+            elements.controlCenter.addEventListener('click', (e) => { 
+                if (e.target === elements.controlCenter) {
+                    const rect = elements.controlCenter.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    if (clickX > rect.width / 2) {
+                        elements.controlCenter.classList.remove('active');
+                        elements.notificationCenter.classList.add('active');
+                    } else {
+                        elements.controlCenter.classList.remove('active');
+                    }
+                }
+            });
+
+            elements.controlToggles.forEach(toggle => {
+                const icon = toggle.querySelector('.control-icon');
+                if(icon){
+                    toggle.addEventListener('click', (e) => {
+                       e.stopPropagation();
+                       icon.classList.toggle('active');
+                    });
+                } else {
+                     toggle.addEventListener('click', (e) => {
+                       e.stopPropagation();
+                       toggle.classList.toggle('active');
+                    });
+                }
+            });
+            
+            // --- INICIALIZACIÓN ---
+            renderActiveGardenDisplay();
+        });
+    </script>
+</body>
+</html>
+
